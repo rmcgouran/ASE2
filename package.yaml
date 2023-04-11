@@ -26,7 +26,7 @@ library:
   source-dirs: src
 
 executables:
-  Haskell-Coursework-exe:
+  ASE2-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -34,10 +34,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - Haskell-Coursework
+    - ASE2
 
 tests:
-  Haskell-Coursework-test:
+  ASE2-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -45,7 +45,7 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - Haskell-Coursework
+    - ASE2
     - HUnit
     - QuickCheck
     - random

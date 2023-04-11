@@ -1,22 +1,31 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-import Data.List (nub, sort)
+import Data.List (nub, sort, nubBy)
 import Test.Hspec
 import BinaryTree
 import Test.QuickCheck (Arbitrary(..), Gen, sized, oneof, resize, property)
 
-
 instance Arbitrary a => Arbitrary (BST a) where
   arbitrary = sized arbitraryBST
 
-arbitraryBST :: Arbitrary a => Int -> Gen (BST a)
+arbitraryBST :: forall a. Arbitrary a => Int -> Gen (BST a)
 arbitraryBST 0 = return Leaf
 arbitraryBST n = do
   key <- arbitrary
   value <- arbitrary
   left <- resize (n `div` 2) arbitrary
   right <- resize (n `div` 2) arbitrary
-  oneof [return Leaf, return (Node key value left right)]
+  let tree = Node key value left right
+  return $ makeUniqueKeys tree
+
+makeUniqueKeys :: BST a -> BST a
+makeUniqueKeys tree = foldr (\(k, v) acc -> addItem k v acc) Leaf keyValueList
+  where
+    keyValueList = nubBy (\(k1, _) (k2, _) -> k1 == k2) $ treeToList tree
+
+treeToList :: BST a -> [(Int, a)]
+treeToList Leaf = []
+treeToList (Node k v l r) = treeToList l ++ [(k, v)] ++ treeToList r
 
 main :: IO ()
 main = hspec $ do
@@ -76,5 +85,33 @@ main = hspec $ do
                     lookupKey key (addItem key value tree) == Just value
 
             it "bstToList is sorted" $ property $
-                \list -> let tree = newBSTFromList (list :: [(Int, String)])
+                \list -> let tree =                 newBSTFromList (list :: [(Int, String)])
                          in bstToList tree == sort (nub (map fst list))
+
+        describe "additional tests" $ do
+            it "can't find items not in the dictionary" $ property $
+                \key (tree :: BST String) ->
+                    lookupKey key (deleteItem key tree) == Nothing
+
+            it "can find every item individually" $ property $
+                \list -> let tree = newBSTFromList (list :: [(Int, String)])
+                             keys = map fst list
+                         in all (\key -> lookupKey key tree /= Nothing) keys
+
+            it "can delete an item when given a key and maintain order" $ property $
+                \key (tree :: BST String) ->
+                    let tree' = deleteItem key tree
+                    in bstToList tree' == sort (nub (filter (/= key) (bstToList tree)))
+
+            it "can delete all items in the dictionary in reverse order" $ property $
+                \list -> let tree = newBSTFromList (list :: [(Int, String)])
+                             keys = reverse . sort . nub . map fst $ list
+                             emptyTree = foldr deleteItem tree keys
+                         in emptyTree == (Leaf :: BST String)
+
+            it "can delete all items in the dictionary in a random order" $ property $
+                \list -> let tree = newBSTFromList (list :: [(Int, String)])
+                             keys = nub . map fst $ list
+                             emptyTree = foldr deleteItem tree keys
+                         in emptyTree == (Leaf :: BST String)
+
